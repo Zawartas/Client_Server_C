@@ -1,0 +1,10 @@
+-rw-rw-r--. 1 zawartas zawartas  3155 06-12 20:37 common.c
+-rw-rw-r--. 1 zawartas zawartas  1512 06-12 20:37 common.h
+-rwxrwxr-x. 1 zawartas zawartas 19000 06-12 21:41 kl.exe
+-rw-rw-r--. 1 zawartas zawartas  7338 06-12 21:29 klient.c
+-rw-rw-r--. 1 zawartas zawartas  1224 06-12 20:41 klient.h
+-rw-r--r--. 1 zawartas zawartas  6840 06-12 22:35 server.c
+-rw-r--r--. 1 zawartas zawartas  1064 06-12 20:36 server.h
+-rwxrwxr-x. 1 zawartas zawartas 18824 06-12 21:57 sr.exe
+drwxrwxr-x. 2 zawartas zawartas  4096 06-12 20:55 test
+-rw-rw-r--. 1 zawartas zawartas     0 06-12 22:38 tmp.txt
