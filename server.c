@@ -132,7 +132,160 @@ int ftserve_list(int sock_data, int sock_control)
 
 
 
+/**
+ * Searching for a product by bar code
+ */
+int ftserve_pokaz_towar(int sock_data, int sock_control, long int szukane_ID)
+{
+	FILE * fp;
+    char * line = NULL;
+    char * token = NULL;
+    char data[MAXSIZE];
 
+    size_t len = 0;
+    ssize_t read;
+    int znaleziono = 0;
+    
+    struct TOWAR baza;
+
+    fp = fopen(".baza", "r+");
+    if (!fp)
+        exit(EXIT_FAILURE);
+    else
+    {
+        printf("[+]Przeszukiwanie bazy danych\n");
+        printf("[+]Poszukiwanie ID: %ld\n", szukane_ID);
+    }
+    
+
+    while ((read = getline(&line, &len, fp)) != -1) 
+    {
+        if ((token = strtok(line, ",")) == NULL)
+                    exit(EXIT_FAILURE);
+
+            sscanf(token, "%ld", &baza.kod_kreskowy);
+            token = strtok (NULL, ",");
+    
+            sscanf(token, "%s", baza.nazwa);
+            token = strtok (NULL, ",");
+
+            sscanf(token, "%lg", &baza.cena);
+        
+                if (baza.kod_kreskowy == szukane_ID)
+                {
+                    memset(data, 0, MAXSIZE);
+                    
+                    sprintf(data, "Znaleziono produkt: %ld %s %lg\n", baza.kod_kreskowy, baza.nazwa, baza.cena);
+                    printf("Znaleziono na serwerze produkt: %s\n", data);
+                    znaleziono = 1;
+                    break;
+                }
+    }
+	
+	if (!znaleziono) 
+    {
+        printf("Nie znaleziono produktu o zadanym kodzie kreskowym\n");
+        sprintf(data, "Nie znaleziono produktu o zadanym kodzie kreskowym\n");
+    }
+	
+    fclose(fp);
+    if (line) free(line);
+
+	send_response(sock_control, 1); //starting
+
+		if (send(sock_data, data, strlen(data), 0) < 0) 
+        {
+			perror("err");
+		}
+
+	fclose(fp);
+
+	send_response(sock_control, 226);	// send 226
+
+	return 0;	
+}
+
+
+
+/*___________________________________________________________________________________________________________*/
+/*___________________________________________________________________________________________________________*/
+/*___________________________________________________________________________________________________________*/
+/*___________________________________________________________________________________________________________*/
+/*___________________________________________________________________________________________________________*/
+
+int ftserve_dodaj_towar(int sock_data, int sock_control, long int szukane_ID, char *nazwa, double price)
+{
+	FILE * fp;
+    char * line = NULL;
+    char * token = NULL;
+    char data[MAXSIZE];
+
+    size_t len = 0;
+    ssize_t read;
+    int znaleziono = 0;
+    
+    struct TOWAR baza;
+
+    fp = fopen(".baza", "r");
+    if (!fp)
+        exit(EXIT_FAILURE);
+    else
+    {
+        printf("[+]Przeszukiwanie bazy danych\n");
+        printf("[+]Poszukiwanie ID: %ld\n", szukane_ID);
+    }
+    
+    while ((read = getline(&line, &len, fp)) != -1) 
+    {
+        if ((token = strtok(line, ",")) == NULL)
+                    exit(EXIT_FAILURE);
+
+            sscanf(token, "%ld", &baza.kod_kreskowy);
+            token = strtok (NULL, ",");
+    
+            sscanf(token, "%s", baza.nazwa);
+            token = strtok (NULL, ",");
+
+            sscanf(token, "%lg", &baza.cena);
+        
+                if (baza.kod_kreskowy == szukane_ID)
+                {
+                    memset(data, 0, MAXSIZE);
+                    
+                    sprintf(data, "Znaleziono produkt: %ld %s %lg\nUzyj komendy 'zmie' w celu zmiany produktu lub go 'usun', a nastepnie dodaj nowy", 
+                            baza.kod_kreskowy, baza.nazwa, baza.cena);
+                    printf("Znaleziono na serwerze produkt: %s\n", data);
+                    znaleziono = 1;
+                    fclose(fp);
+                    break;
+                }
+    }
+	
+	if (!znaleziono) 
+    {
+        fp = fopen(".baza", "a");
+        int status;
+        printf("Dodajemy produkt o zadanym kodzie kreskowym\n");
+        sprintf(data, "Dodajemy produkt o zadanych danych do bazy\n");
+        if ((status = fprintf(fp, "%ld,%s,%lg\n", szukane_ID, nazwa, price)) <= 0)
+            printf("[-]Blad zapisu nowego produktu do bazy\n");
+        fclose(fp);
+    }
+	
+    
+    if (line) free(line);
+
+	send_response(sock_control, 1); //starting
+
+		if (send(sock_data, data, strlen(data), 0) < 0) 
+        {
+			perror("err");
+		}
+
+	send_response(sock_control, 226);	// send 226
+
+	return 0;	
+}
 
 
 /**
@@ -142,7 +295,7 @@ int ftserve_list(int sock_data, int sock_control)
  */
 int ftserve_start_data_conn(int sock_control)
 {
-	char buf[1024];	
+	char buf[1024];	   
 	int wait, sock_data;
 
 	// Wait for go-ahead on control conn
@@ -181,7 +334,7 @@ int ftserve_check_user(char*user, char*pass)
 	char *line = NULL;
 	size_t num_read;									
 	size_t len = 0;
-	FILE* fd;
+	FILE *fd;
 	int auth = 0;
 	
 	fd = fopen(".auth", "r");
@@ -276,7 +429,8 @@ int ftserve_login(int sock_control)
 
 
 /**
- * Wait for command from client and
+ * Wait for command from client and fill up cmd and arg
+ * and
  * send response
  * Returns response code
  */
@@ -299,12 +453,21 @@ int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 	char *tmp = buffer + 5;
 	strcpy(arg, tmp);
 	
-	if (strcmp(cmd, "QUIT")==0) {
+	printf("Komenda otrzymana od klienta: %s\n", cmd);
+	printf("Argumenty do komendy: %s\n", arg);
+	
+	if (strcmp(cmd, "QUIT")==0) 
+	{
 		rc = 221;
-	} else if((strcmp(cmd, "USER")==0) || (strcmp(cmd, "PASS")==0) ||
-			(strcmp(cmd, "LIST")==0) || (strcmp(cmd, "RETR")==0)) {
+	} 
+	else if((strcmp(cmd, "USER")==0) || (strcmp(cmd, "PASS")==0) ||
+		(strcmp(cmd, "LIST")==0) || (strcmp(cmd, "RETR")==0) || 
+		(strcmp(cmd, "POKA")==0) || (strcmp(cmd, "ADD_")==0)) 
+	{
 		rc = 200;
-	} else { //invalid command
+	} 
+	else 
+	{ //invalid command
 		rc = 502;
 	}
 
@@ -348,24 +511,61 @@ void ftserve_process(int sock_control)
 	while (1) {
 		// Wait for command
 		int rc = ftserve_recv_cmd(sock_control, cmd, arg);
-		printf("ftserve_recv_cmd: %d\n", rc);
 		
+		printf("SERWER loop otrzymalo ftserve_recv_cmd RC: %d.\n", rc);
+        printf("SERWER loop otrzymalo ftserve_recv_cmd cmd->code: %s.\n", cmd);
+        
+        /* wypisujemy i zapisujemy ewentualne argumenty komendy */
+        char *argument;
+        char arg_array[3][50];
+
+        if (strlen(arg)>0)
+        {
+            printf("Obslugiwane i zapisywane argumenty komendy...\n");    
+            argument = strtok(arg, " ");
+            strncpy(arg_array[0], argument, sizeof(arg_array[0]));
+            printf("ftserve_recv_cmd cmd->argument_1: %s\n", arg_array[0]);
+		    int i = 1;
+		    while ((argument = strtok (NULL, " ")) != NULL)
+		    {
+		        strncpy(arg_array[i], argument, sizeof(arg_array[i]));
+		        printf("ftserve_recv_cmd cmd->argument_%d: %s\n", i+1, arg_array[i]);
+		        i++;
+		    }
+        }
+ 
+        /* kiedy ftserve_recv_cmd zwrocilo quit lub jakis blad */
 		if ((rc < 0) || (rc == 221)) {
 			break;
 		}
 		
-		if (rc == 200 ) {
-			// Open data connection with client
+		
+		/* kiedy ftserve_recv_cmd zwrocilo jakas komende */
+		if (rc == 200 ) 
+        {
+			printf("Otrzymano komende i nastepuje jej procesowanie...\n");
+            // Open data connection with client
 			if ((sock_data = ftserve_start_data_conn(sock_control)) < 0) {
 				close(sock_control);
 				exit(1); 
 			}
 
 			// Execute command
-			if (strcmp(cmd, "LIST")==0) { // Do list
+			if (strcmp(cmd, "LIST")==0) 
+            { // Do list
+                printf("Wykonowywana komenda 'list' przez SERWER\n");
 				ftserve_list(sock_data, sock_control);
 			} else if (strcmp(cmd, "RETR")==0) { // Do get <filename>
-				ftserve_retr(sock_control, sock_data, arg);
+                printf("Wykonowywana komenda 'get' przez SERWER\n");
+				ftserve_retr(sock_control, sock_data, arg_array[0]);
+			} else if (strcmp(cmd, "POKA")==0) {
+                printf("Wykonowywana komenda 'pokaz' przez SERWER\n");
+                printf("Szukany kod kreskowy char: %s long int: %ld \n",arg_array[0], char_to_long(arg_array[0]));
+				ftserve_pokaz_towar(sock_data, sock_control, char_to_long(arg_array[0]));
+			} else if (strcmp(cmd, "ADD_")==0) {
+                printf("Wykonowywana komenda 'doda' przez SERWER\n");
+                printf("Dodajemy towar: %ld, %s, %lg \n", char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
+				ftserve_dodaj_towar(sock_data, sock_control, char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
 			}
 		
 			// Close data connection

@@ -1,7 +1,92 @@
 #include "klient.h"
 	
 
-int sock_control; 
+int sock_control;
+int database_size;
+struct TOWAR tab_TOWAR[MAX_BUF];
+
+/**
+ * Open database file
+ * and fill up tab_TOWAR table of TOWAR structures
+ * and fills up database size
+ */
+void open_database(int* database_size)
+{
+	FILE * fp;
+    	char * line = NULL;
+    	char * token = NULL;
+    	size_t len = 0;
+    	ssize_t read;
+    	int i = 0;
+
+    	fp = fopen(".baza", "r+");
+    	if (fp == NULL)
+        	exit(EXIT_FAILURE);
+        else
+        	printf("[+]Otworzono BAZE DANYCH\n");
+
+    	while ((read = getline(&line, &len, fp)) != -1) 
+    	{
+		if ((token = strtok(line, ",")) == NULL)
+            		exit(EXIT_FAILURE);
+
+    		sscanf(token, "%ld", &tab_TOWAR[i].kod_kreskowy);
+    		token = strtok (NULL, ",");
+    
+    		sscanf(token, "%s", tab_TOWAR[i].nazwa);
+    		token = strtok (NULL, ",");
+    
+    		sscanf(token, "%lg", &tab_TOWAR[i].cena);
+        i++;
+    	}
+	*database_size = i;
+	printf("database size: %d\n", *database_size);
+	
+    	fclose(fp);
+    	if (line)
+        	free(line);
+}
+
+
+/**
+DO ZROBIENIA
+ */
+void save_database(int* database_size)
+{
+	FILE * fp;
+    	char * line = NULL;
+    	char * token = NULL;
+    	size_t len = 0;
+    	ssize_t read;
+    	int i = 0;
+
+    	fp = fopen(".baza", "r+");
+    	if (fp == NULL)
+        	exit(EXIT_FAILURE);
+        else
+        	printf("[+]Otworzono BAZE DANYCH\n");
+
+    	while ((read = getline(&line, &len, fp)) != -1) 
+    	{
+		if ((token = strtok(line, ",")) == NULL)
+            		exit(EXIT_FAILURE);
+
+    		sscanf(token, "%ld", &tab_TOWAR[i].kod_kreskowy);
+    		token = strtok (NULL, ",");
+    
+    		sscanf(token, "%s", tab_TOWAR[i].nazwa);
+    		token = strtok (NULL, ",");
+    
+    		sscanf(token, "%lg", &tab_TOWAR[i].cena);
+        i++;
+    	}
+	*database_size = i;
+	printf("database size: %d\n", *database_size);
+	
+    	fclose(fp);
+    	if (line)
+        	free(line);
+}
 
 
 /**
@@ -10,13 +95,18 @@ int sock_control;
  */
 int read_reply(){
 	int retcode = 0;
-	printf("retcode: %d\n", retcode);
+    /*The recv(), recvfrom(), and recvmsg() calls are used to receive
+       messages from a socket.  They may be used to receive data on both
+       connectionless and connection-oriented sockets.  This page first
+       describes common features of all three system calls, and then
+       describes the differences between the calls.*/
+    /*sock_control is a global variable*/
 	if (recv(sock_control, &retcode, sizeof retcode, 0) < 0) {
 		perror("client: error reading message from server\n");
 		return -1;
 	}
-	printf("retcode: %d\n", retcode);
-	printf("ntohl(retcode): %d\n", ntohl(retcode));	
+	printf("retcode przed 'ntohl': %d\n", retcode);
+	printf("retcode po 'ntohl'   : %d\n", ntohl(retcode));	
 	return ntohl(retcode);
 }
 
@@ -50,33 +140,55 @@ void print_reply(int rc)
  */ 
 int ftclient_read_command(char* buf, int size, struct command *cstruct)
 {
-	memset(cstruct->code, 0, sizeof(cstruct->code));
-	memset(cstruct->arg, 0, sizeof(cstruct->arg));
-	
-	printf("ftclient> ");	// prompt for input		
+	/* cleaning structure for command with arguments */
+    memset(cstruct->code, 0, sizeof(cstruct->code));
+    for (int i = 0; i < 3; i++) 
+    {
+        memset(cstruct->arg[i], 0, sizeof(cstruct->arg[i]));
+    }
+    
+	printf("server> ");	// prompt for input		
 	fflush(stdout); 	
-
+    
 	// wait for user to enter a command
-	read_input(buf, size);
-		
-	char *arg = NULL;
-	arg = strtok (buf," ");
-	arg = strtok (NULL, " ");
+    read_input(buf, size);
 
-	if (arg != NULL){
-		// store the argument if there is one
-		strncpy(cstruct->arg, arg, strlen(arg));
-	}
-
+    
+    //command
+	char *argument = NULL;
+	argument = strtok (buf," ");
+    strncpy(cstruct->code, argument, sizeof(cstruct->code));
+    
+    printf("Klient wysyla komende: %s. A skopiowano: %s.\n",argument, cstruct->code);
+    
+    //arguments
+    int there_are_arguments = 0, i = 0;
+    
+    while ((argument = strtok (NULL, " ")) != NULL)
+    {
+        there_are_arguments = 1;
+        printf("Argument_nr_%d: %s\n", i+1, argument);
+        strncpy(cstruct->arg[i], argument, strlen(argument));
+        i++;
+    }
+    if (!there_are_arguments) printf("Brak argumentow komendy   .\n");
+    
+    
 	// buf = command
-	if (strcmp(buf, "list") == 0) {
+	if (strcmp(cstruct->code, "list") == 0) {
 		strcpy(cstruct->code, "LIST");		
 	}
-	else if (strcmp(buf, "get") == 0) {
+	else if (strcmp(cstruct->code, "get") == 0) {
 		strcpy(cstruct->code, "RETR");		
 	}
-	else if (strcmp(buf, "quit") == 0) {
+	else if (strcmp(cstruct->code, "quit") == 0) {
 		strcpy(cstruct->code, "QUIT");		
+	}
+	else if (strcmp(cstruct->code, "poka") == 0) {
+		strcpy(cstruct->code, "POKA");		
+	}
+	else if (strcmp(cstruct->code, "doda") == 0) {
+		strcpy(cstruct->code, "ADD_");		
 	}
 	else {//invalid
 		return -1;
@@ -87,11 +199,15 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
 	strcpy(buf, cstruct->code);
 
 	// if there's an arg, append it to the buffer
-	if (arg != NULL) {
-		strcat(buf, " ");
-		strncat(buf, cstruct->arg, strlen(cstruct->arg));
-	}
-	
+    if (there_are_arguments)
+    {
+        for (int j = 0; j < i; j++) 
+        {
+            strcat(buf, " ");
+            strncat(buf, cstruct->arg[j], sizeof(cstruct->arg[j]));
+        }
+    printf("buf: %s.\n", buf);
+    }
 	return 0;
 }
 
@@ -140,7 +256,6 @@ int ftclient_open_conn(int sock_con)
 
 
 
-
 /** 
  * Do list commmand
  */
@@ -176,6 +291,45 @@ int ftclient_list(int sock_data, int sock_con)
 
 
 
+/** 
+ * Do pokaz commmand
+ */
+int ftclient_odbierz_info_po_komendzie(int sock_data, int sock_con, char *napis)
+{
+    
+    printf("%s\n", napis);
+	size_t num_recvd;			// number of bytes received with recv()
+	char buf[MAXSIZE];			// hold a filename received from server
+	int tmp = 0;
+
+	// Wait for server starting message
+	if (recv(sock_con, &tmp, sizeof tmp, 0) < 0) {
+		perror("client: error reading message from server\n");
+		return -1;
+	}
+	
+	memset(buf, 0, sizeof(buf));
+	while ((num_recvd = recv(sock_data, buf, MAXSIZE, 0)) > 0) 
+    {
+        printf("%s", buf);
+		memset(buf, 0, sizeof(buf));
+	}
+	
+	if (num_recvd < 0) 
+    {
+	        perror("error");
+	}
+
+	// Wait for server done message
+	if (recv(sock_con, &tmp, sizeof tmp, 0) < 0) {
+		perror("client: error reading message from server\n");
+		return -1;
+	}
+	return 0;
+}
+
+
+
 /**
  * Input: cmd struct with an a code and an arg
  * Concats code + arg into a string and sends to server
@@ -184,9 +338,19 @@ int ftclient_send_cmd(struct command *cmd)
 {
 	char buffer[MAXSIZE];
 	int rc;
-
-	sprintf(buffer, "%s %s", cmd->code, cmd->arg);
-	
+    if (strcmp(cmd->code, "USER") == 0 || strcmp(cmd->code, "PASS") == 0)
+    {
+        sprintf(buffer, "%s %s", cmd->code, cmd->arg[0]);
+    }
+    else if (strcmp(cmd->code, "QUIT") == 0)
+    {
+        sprintf(buffer, "%s", cmd->code);
+    }
+    else
+    {
+        sprintf(buffer, "%s %s %s %s", cmd->code, cmd->arg[0], cmd->arg[1], cmd->arg[2]);
+    }
+    
 	// Send command string to server
 	rc = send(sock_control, buffer, (int)strlen(buffer), 0);	
 	if (rc < 0) {
@@ -197,6 +361,35 @@ int ftclient_send_cmd(struct command *cmd)
 	return 0;
 }
 
+char *get_pass(char *sign) {
+    
+    printf(sign);
+	static char *buf = NULL;
+	signal(SIGINT, SIG_IGN);
+	signal(SIGTERM, SIG_IGN);
+
+	struct termios term;
+	tcgetattr(1, &term); /*reads parameters from 1st terminal and saves them in term*/
+	term.c_lflag &= ~ECHO; /*we aren't echoing characters*/
+	tcsetattr(1, TCSANOW, &term); /*sets new parameters to terminal 1, from term, and TCSANOW measn immediately*/
+
+	int c, len = 256, pos = 0;
+	buf = realloc(buf, len);
+	buf[0] = '\0';
+	while ((c=fgetc(stdin)) != '\n') {
+		buf[pos++] = (char) c;
+		if (pos >= len)
+			buf = realloc(buf, (len += 256));
+	}
+	buf[pos] = '\0';
+
+	term.c_lflag |= ECHO; /*we give back ECHOing characters to terminal*/
+	tcsetattr(1, TCSANOW, &term); /* and we set them back*/
+    
+    signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
+	return buf;
+}
 
 
 /**
@@ -206,17 +399,22 @@ int ftclient_send_cmd(struct command *cmd)
 void ftclient_login()
 {
 	struct command cmd;
-	char user[256];
-	memset(user, 0, 256);
+	char user[255];
+	memset(user, 0, 255);
 
 	// Get username from user
 	printf("Name: ");	
 	fflush(stdout); 		
-	read_input(user, 256);
+	read_input(user, 255);
+    printf("Input: %s.", user);
 
 	// Send USER command to server
 	strcpy(cmd.code, "USER");
-	strcpy(cmd.arg, user);
+    
+    printf("Sizes of user: %d and cmd.arg[0]: %d\n", sizeof(user), sizeof(cmd.arg[0]));	
+    
+    strncpy(cmd.arg[0], user, sizeof(cmd.arg[0]));
+    printf("Tutaj\n");	
 	ftclient_send_cmd(&cmd);
 	
 	// Wait for go-ahead to send password
@@ -225,11 +423,11 @@ void ftclient_login()
 
 	// Get password from user
 	fflush(stdout);	
-	char *pass = getpass("Password: ");	
+	char *pass = get_pass("Password: ");	
 
 	// Send PASS command to server
 	strcpy(cmd.code, "PASS");
-	strcpy(cmd.arg, pass);
+	strcpy(cmd.arg[0], pass);
 	ftclient_send_cmd(&cmd);
 	
 	// wait for response
@@ -264,7 +462,7 @@ int main(int argc, char* argv[])
 	struct addrinfo hints, *res, *rp;
 
 	if (argc != 3) {
-		printf("usage: ./ftclient hostname port\n");
+		printf("usage: %s [hostname] [port]\n", argv[0]);
 		exit(0);
 	}
 
@@ -276,14 +474,38 @@ int main(int argc, char* argv[])
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	
+    /* The getaddrinfo() function allocates and initializes a linked list of addrinfo structures, 
+        one for each network address that matches node and service, subject to any restrictions imposed by hints, 
+        and returns a pointer to the start of the list in res. 
+        The items in the linked list are linked by the ai_next field. */
+    
+    /* getaddrinfo() returns a list of address structures.
+        Try each address until we successfully bind(2).
+        If socket(2) (or bind(2)) fails, we (close the socket
+        and) try the next address. */
+    
+    /*There are several reasons why the linked list may have more than one
+        addrinfo structure, including: the network host is multihomed, acces‐
+        sible over multiple protocols (e.g., both AF_INET and AF_INET6); or
+        the same service is available from multiple socket types (one
+        SOCK_STREAM address and another SOCK_DGRAM address, for example).
+        Normally, the application should try using the addresses in the order
+        in which they are returned.  The sorting function used within getad‐
+        drinfo() is defined in RFC 3484; the order can be tweaked for a par‐
+        ticular system by editing /etc/gai.conf (available since glibc 2.5).*/
+    
 	s = getaddrinfo(host, port, &hints, &res);
-	if (s != 0) {
+	if (s != 0) { 
+        /*The gai_strerror() function translates these error codes 
+        to a human readable string, suitable for error reporting.*/
 		printf("getaddrinfo() error %s", gai_strerror(s));
 		exit(1);
 	}
 	
 	// Find an address to connect to & connect
-	for (rp = res; rp != NULL; rp = rp->ai_next) {
+	for (rp = res; rp != NULL; rp = rp->ai_next) 
+    {
+        /*sock_control ia a integer var set at the beginning of code*/
 		sock_control = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 
 		if (sock_control < 0)
@@ -297,6 +519,8 @@ int main(int argc, char* argv[])
 		}
 		close(sock_control);
 	}
+	/*The freeaddrinfo() function frees the memory that was allocated for
+       the dynamically allocated linked list res.*/
 	freeaddrinfo(rp);
 
 
@@ -311,13 +535,16 @@ int main(int argc, char* argv[])
 	while (1) { // loop until user types quit
 
 		// Get a command from user
-		if ( ftclient_read_command(buffer, sizeof buffer, &cmd) < 0) {
+        memset(buffer, 0, sizeof(buffer));
+		if ( ftclient_read_command(buffer, sizeof(buffer), &cmd) < 0) 
+        {
 			printf("Invalid command\n");
 			continue;	// loop back for another command
 		}
 
 		// Send command to server
-		if (send(sock_control, buffer, (int)strlen(buffer), 0) < 0 ) {
+		if (send(sock_control, buffer, (int)strlen(buffer), 0) < 0 ) 
+        {
 			close(sock_control);
 			exit(1);
 		}
@@ -329,10 +556,13 @@ int main(int argc, char* argv[])
 			break;
 		}
 		
-		if (retcode == 502) {
+		if (retcode == 502) 
+        	{
 			// If invalid command, show error message
 			printf("%d Invalid command.\n", retcode);
-		} else {			
+		} 
+		else 
+        	{			
 			// Command is valid (RC = 200), process command
 		
 			// open data connection
@@ -342,17 +572,28 @@ int main(int argc, char* argv[])
 			}			
 			
 			// execute command
-			if (strcmp(cmd.code, "LIST") == 0) {
-				ftclient_list(data_sock, sock_control);
-			} 
-			else if (strcmp(cmd.code, "RETR") == 0) {
+			if (strcmp(cmd.code, "LIST") == 0) 
+            {
+				printf("Procesowanie komendy 'LIST' od strony Klienta.\n");
+                ftclient_list(data_sock, sock_control);
+			}
+			else if (strcmp(cmd.code, "POKA") == 0)
+			{
+                ftclient_odbierz_info_po_komendzie(data_sock, sock_control, "Procesowanie komendy 'POKA' od strony Klienta.\n");
+			}
+			else if (strcmp(cmd.code, "ADD_") == 0)
+			{
+				ftclient_odbierz_info_po_komendzie(data_sock, sock_control, "Procesowanie komendy 'ADD_' od strony Klienta.\n");
+			}
+			else if (strcmp(cmd.code, "RETR") == 0) 
+            {
 				// wait for reply (is file valid)
 				if (read_reply() == 550) {
 					print_reply(550);		
 					close(data_sock);
 					continue; 
 				}
-				ftclient_get(data_sock, sock_control, cmd.arg);
+				ftclient_get(data_sock, sock_control, cmd.arg[0]);
 				print_reply(read_reply()); 
 			}
 			close(data_sock);

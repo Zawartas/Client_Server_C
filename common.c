@@ -1,5 +1,29 @@
 #include "common.h"
 
+int bar_code_valid (char* bar_code)
+{
+    long status;
+    errno = 0;
+    status = strtol(bar_code, NULL, 0);
+    if ((errno == ERANGE && (status == LONG_MAX || status == LONG_MIN)) || (errno != 0 && status <= 0) || strlen(bar_code) != 6) 
+    {
+        return -1;
+    }
+    return 0;
+}
+
+long int char_to_long (char* bar_code)
+{
+    long int status;
+    errno = 0;
+    status = strtol(bar_code, NULL, 0);
+    if ((errno == ERANGE && (status == LONG_MAX || status == LONG_MIN)) || (errno != 0 && status <= 0) || strlen(bar_code) != 6) 
+    {
+        return -1;
+    }
+    return status;
+}
+
 
 /**
  * Create listening socket on remote host
@@ -161,7 +185,10 @@ void read_input(char* buffer, int size)
 
 	if ( fgets(buffer, size, stdin) != NULL ) {
 		nl = strchr(buffer, '\n');
-		if (nl) *nl = '\0'; // truncate, ovewriting newline
+		if (nl) 
+        {
+            *nl = '\0'; // truncate, ovewriting newline
+        }
 	}
 }
 

@@ -15,21 +15,30 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <termios.h>
+#include <limits.h>
+#include <math.h>
 
 
 
 /* constants */
 #define DEBUG				1
-#define MAXSIZE 			512 	// max buffer size
+#define MAXSIZE 			1024 	// max buffer size
 #define CLIENT_PORT_ID		30020
+#define MAX_BUF 50
 
 
 /* Holds command code and argument */
 struct command {
-	char arg[255];
-	char code[5];
+    char code[5];
+	char arg[3][255]; //table of arguments
 };
 
+struct TOWAR {
+    long int kod_kreskowy;
+    char nazwa[MAXSIZE];
+    double cena;
+};
 
 
 
