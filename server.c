@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
  * and fill up tab_TOWAR table of TOWAR structures
  * and fills up database size
  */
-int open_database(int* database_size)
+int open_database()
 {
 	FILE * fp;
     	char * line = NULL;
@@ -61,29 +61,31 @@ int open_database(int* database_size)
     	fp = fopen(".baza", "r+");
     	if (fp == NULL)
         	exit(EXIT_FAILURE);
-        else
-        	printf("[+]Otworzono BAZE DANYCH\n");
 
     	while ((read = getline(&line, &len, fp)) != -1) 
     	{
-		if ((token = strtok(line, ",")) == NULL)
-            		exit(EXIT_FAILURE);
-
-    		sscanf(token, "%ld", &tab_TOWAR[i].kod_kreskowy);
-    		token = strtok (NULL, ",");
-    
-    		sscanf(token, "%s", tab_TOWAR[i].nazwa);
-    		token = strtok (NULL, ",");
-    
-    		sscanf(token, "%lg", &tab_TOWAR[i].cena);
-        i++;
+            printf("rekord o indeksie %d: ", i);
+            if ((token = strtok(line, ",")) == NULL)
+                        exit(EXIT_FAILURE);
+                printf("%s ", token);
+                sscanf(token, "%ld", &tab_TOWAR[i].kod_kreskowy);
+                token = strtok (NULL, ",");
+                printf("%s ", token);
+                sscanf(token, "%s", tab_TOWAR[i].nazwa);
+                token = strtok (NULL, ",");
+                printf("%s", token);
+                sscanf(token, "%lg", &tab_TOWAR[i].cena);
+            i++;
     	}
-	*database_size = i;
+    	
+	database_size = i;
+
+    printf("[+]Otworzono BAZE DANYCH o %d elementach\n", database_size);
 	
     	fclose(fp);
     	if (line) free(line);
     	
-    	return *database_size;
+    	return database_size;
 }
 
 /**
@@ -271,40 +273,90 @@ int ftserve_skasuj_towar(int sock_data, int sock_control, long int szukane_ID)
 	//int database_size;
     	char data[MAXSIZE];
     	int znaleziono = 0, i;
-    	i = open_database(database_size);
+    	i = open_database();
 
         printf("[+]Poszukiwanie ID: %ld\n", szukane_ID);
 
 	memset(data, 0, MAXSIZE);
-    while (i) 
+    while (--i) 
     {   
-                if (tab_TOWAR[i].kod_kreskowy == szukane_ID)
-                {
-                    memset(data, 0, MAXSIZE);
-                    
-                    sprintf(data, "Skasowano produkt: %ld %s %lg\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
-                    strcpy(tab_TOWAR[i].nazwa, "do_skasowania");
-                    printf("Znaleziono na serwerze produkt: %s\n", data);
-                    znaleziono = 1;
-                    break;
-                }
-                else
-                {   
-                    sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
-                    strcpy(tab_TOWAR[i].nazwa, "do_skasowania");
-                    printf("Znaleziono na serwerze produkt: %s\n", data);
-                }
-                i--;
+        if (tab_TOWAR[i].kod_kreskowy == szukane_ID)
+        {
+            memset(data, 0, MAXSIZE);
+            
+            sprintf(data, "Skasowano produkt: %ld %s %lg\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
+            strcpy(tab_TOWAR[i].nazwa, "do_skasowania");
+            printf("Skasowano produkt o ID: %ld\n", szukane_ID);
+            znaleziono = 1;
+            break;
+        }
     }
 	
-    if (line) free(line);
-
+	if(!znaleziono)
+    {
+        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
+        printf("Znaleziono na serwerze produkt: %s\n", data);
+    }
+	
 	send_response(sock_control, 1); //starting
 
-		if (send(sock_data, data, strlen(data), 0) < 0) 
-        	{
-			perror("err");
-		}
+    if (send(sock_data, data, strlen(data), 0) < 0) 
+    {
+        perror("err");
+    }
+		
+    save_database();
+
+	send_response(sock_control, 226);	// send 226 NIE WIEM PO CO TO
+
+	return 0;	
+}
+
+/**
+ * Change product by a bar code
+ */
+int ftserve_zmien_towar(int sock_data, int sock_control, long int szukane_ID, char *nowa_nazwa, double nowa_cena)
+{
+	//int database_size;
+    	char data[MAXSIZE];
+    	int znaleziono = 0, i;
+    	i = open_database();
+
+        printf("[+]Poszukiwanie ID: %ld\n", szukane_ID);
+
+	memset(data, 0, MAXSIZE);
+    while (--i) 
+    {   
+        printf("[+]FUKAMY\n");
+        if (tab_TOWAR[i].kod_kreskowy == szukane_ID)
+        {
+            printf("[+]MAMY!!!!\n");
+           
+            sprintf(data, "Odnaleziony produkt: %ld %s %lg zmieniamy na: %s %lg\n", 
+                    tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena, nowa_nazwa, nowa_cena);
+            strcpy(tab_TOWAR[i].nazwa, nowa_nazwa);
+            tab_TOWAR[i].cena = nowa_cena;
+            printf("Zmieniamy produkt o ID: %ld\n", szukane_ID);
+            znaleziono = 1;
+            break;
+        }
+        i--;
+    }
+	
+	if(!znaleziono)
+    {
+        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
+        printf("Nie znaleziono na serwerze produktu o ID: %ld\n", szukane_ID);
+    }
+	
+	send_response(sock_control, 1); //starting
+
+    if (send(sock_data, data, strlen(data), 0) < 0) 
+    {
+        perror("err");
+    }
+		
+    save_database();
 
 	send_response(sock_control, 226);	// send 226 NIE WIEM PO CO TO
 
@@ -312,12 +364,10 @@ int ftserve_skasuj_towar(int sock_data, int sock_control, long int szukane_ID)
 }
 
 
-/*___________________________________________________________________________________________________________*/
-/*___________________________________________________________________________________________________________*/
-/*___________________________________________________________________________________________________________*/
-/*___________________________________________________________________________________________________________*/
-/*___________________________________________________________________________________________________________*/
 
+/**
+ * Adding a product by a bar code
+ */
 int ftserve_dodaj_towar(int sock_data, int sock_control, long int szukane_ID, char *nazwa, double price)
 {
 	FILE * fp;
@@ -565,9 +615,10 @@ int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 	{
 		rc = 221;
 	} 
-	else if((strcmp(cmd, "USER")==0) || (strcmp(cmd, "PASS")==0) ||
-		(strcmp(cmd, "LIST")==0) || (strcmp(cmd, "RETR")==0) || 
-		(strcmp(cmd, "POKA")==0) || (strcmp(cmd, "ADD_")==0)) 
+	else if((strcmp(cmd, "USER")==0) || (strcmp(cmd, "PASS")==0) 
+            || (strcmp(cmd, "LIST")==0) || (strcmp(cmd, "RETR")==0) 
+            || (strcmp(cmd, "POKA")==0) || (strcmp(cmd, "ADD_")==0)
+            || (strcmp(cmd, "DEL_")==0) || (strcmp(cmd, "CHNG")==0))
 	{
 		rc = 200;
 	} 
@@ -671,6 +722,14 @@ void ftserve_process(int sock_control)
                 printf("Wykonowywana komenda 'doda' przez SERWER\n");
                 printf("Dodajemy towar: %ld, %s, %lg \n", char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
 				ftserve_dodaj_towar(sock_data, sock_control, char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
+			} else if (strcmp(cmd, "DEL_")==0) {
+                printf("Wykonowywana komenda 'kasu' przez SERWER\n");
+                printf("Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
+				ftserve_skasuj_towar(sock_data, sock_control, char_to_long(arg_array[0]));
+			} else if (strcmp(cmd, "CHNG")==0) {
+                printf("Wykonowywana komenda 'zmie' przez SERWER\n");
+                printf("Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
+				ftserve_zmien_towar(sock_data, sock_control, char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
 			}
 		
 			// Close data connection

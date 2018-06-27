@@ -2,8 +2,6 @@
 	
 
 int sock_control;
-int database_size;
-struct TOWAR tab_TOWAR[MAX_BUF];
 
 
 /**
@@ -26,7 +24,6 @@ int read_reply(){
 	printf("retcode po 'ntohl'   : %d\n", ntohl(retcode));	
 	return ntohl(retcode);
 }
-
 
 
 /**
@@ -107,6 +104,12 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
 	else if (strcmp(cstruct->code, "doda") == 0) {
 		strcpy(cstruct->code, "ADD_");		
 	}
+	else if (strcmp(cstruct->code, "kasu") == 0) {
+		strcpy(cstruct->code, "DEL_");
+    }
+	else if (strcmp(cstruct->code, "zmin") == 0) {
+		strcpy(cstruct->code, "CHNG");
+    }
 	else {//invalid
 		return -1;
 	}
@@ -216,7 +219,7 @@ int ftclient_odbierz_info_po_komendzie(int sock_data, int sock_con, char *napis)
     
     printf("%s\n", napis);
 	size_t num_recvd;			// number of bytes received with recv()
-	char buf[MAXSIZE];			// hold a filename received from server
+	char buf[MAXSIZE];			// hold a message received from server
 	int tmp = 0;
 
 	// Wait for server starting message
@@ -466,7 +469,7 @@ int main(int argc, char* argv[])
 			exit(1);
 		}
 
-		retcode = read_reply();		
+		retcode = read_reply();	
 		if (retcode == 221) {
 			/* If command was quit, just exit */
 			print_reply(221);		
@@ -501,6 +504,14 @@ int main(int argc, char* argv[])
 			else if (strcmp(cmd.code, "ADD_") == 0)
 			{
 				ftclient_odbierz_info_po_komendzie(data_sock, sock_control, "Procesowanie komendy 'ADD_' od strony Klienta.\n");
+			}
+            else if (strcmp(cmd.code, "DEL_") == 0)
+			{
+				ftclient_odbierz_info_po_komendzie(data_sock, sock_control, "Procesowanie komendy 'DEL_' od strony Klienta.\n");
+			}
+            else if (strcmp(cmd.code, "CHNG") == 0)
+			{
+				ftclient_odbierz_info_po_komendzie(data_sock, sock_control, "Procesowanie komendy 'CHNG' od strony Klienta.\n");
 			}
 			else if (strcmp(cmd.code, "RETR") == 0) 
             {
