@@ -28,7 +28,10 @@
 #define MAX_BUF 50
 
 
-/* Holds command code and argument */
+/**
+ * \struct
+ * Holds command code and argument 
+ */
 struct command {
     char code[5];
 	char arg[3][255]; //table of arguments
@@ -43,6 +46,7 @@ struct TOWAR {
 
 
 /**
+ * \function sdsdsdsdsds
  * Create listening socket on remote host
  * Returns -1 on error, socket fd on success
  */

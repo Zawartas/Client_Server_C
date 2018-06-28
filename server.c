@@ -2,6 +2,13 @@
 
 struct TOWAR tab_TOWAR[MAX_BUF];
 int database_size;
+int admin;
+
+/**
+ * \function
+ * Main function
+ * 
+ */
 
 int main(int argc, char *argv[])
 {	
@@ -45,9 +52,11 @@ int main(int argc, char *argv[])
 }
 
 /**
+ * \function
  * Open database file
  * and fill up tab_TOWAR table of TOWAR structures
  * and fills up database size
+ * 
  */
 int open_database()
 {
@@ -89,7 +98,9 @@ int open_database()
 }
 
 /**
-DO ZROBIENIA
+ * \function
+ * Save database to a file
+ * 
  */
 void save_database()
 {
@@ -99,90 +110,44 @@ void save_database()
     for (int j = 0; j < database_size; j++)
     {
         if (strcmp(tab_TOWAR[j].nazwa, "do_skasowania") == 0) continue;
-        fprintf (fp, "%d,%s,%.2f\n", tab_TOWAR[j].kod_kreskowy, tab_TOWAR[j].nazwa, tab_TOWAR[j].cena);
+        fprintf (fp, "%ld,%s,%.2f\n", tab_TOWAR[j].kod_kreskowy, tab_TOWAR[j].nazwa, tab_TOWAR[j].cena);
     }
     fclose(fp);
-    
-    exit(EXIT_SUCCESS);
-}
-
-/**
- * Send file specified in filename over data connection, sending
- * control message over control connection
- * Handles case of null or invalid filename
- */
-void ftserve_retr(int sock_control, int sock_data, char* filename)
-{	
-	FILE* fd = NULL;
-	char data[MAXSIZE];
-	size_t num_read;							
-		
-	fd = fopen(filename, "r");
-	
-	if (!fd) {	
-		// send error code (550 Requested action not taken)
-		send_response(sock_control, 550);
-		
-	} else {	
-		// send okay (150 File status okay)
-		send_response(sock_control, 150);
-	
-		do {
-			num_read = fread(data, 1, MAXSIZE, fd);
-
-			if (num_read < 0) {
-				printf("error in fread()\n");
-			}
-
-			// send block
-			if (send(sock_data, data, num_read, 0) < 0)
-				perror("error sending file\n");
-
-		} while (num_read > 0);													
-			
-		// send message: 226: closing conn, file transfer successful
-		send_response(sock_control, 226);
-
-		fclose(fd);
-	}
 }
 
 
 /**
+ * \function
  * Send list of files in current directory
  * over data connection
  * Return -1 on error, 0 on success
+ * 
  */
 int ftserve_list(int sock_data, int sock_control)
 {
-	char data[MAXSIZE];
-	size_t num_read;									
-	FILE* fd;
+	FILE * fp;
+    char * line = NULL;
+    char data[MAXSIZE];
 
-	int rs = system("ls -l | tail -n+2 > tmp.txt");
-	if ( rs < 0) {
-		exit(1);
-	}
-	
-	fd = fopen("tmp.txt", "r");	
-	if (!fd) {
-		exit(1);
-	}
+    size_t len = 0, read;
+    
+    fp = fopen(".baza", "r+");
+    if (!fp)
+        exit(EXIT_FAILURE);
+    
+    memset(data, 0, MAXSIZE);
+    send_response(sock_control, 1); //starting
 
-	/* Seek to the beginning of the file */
-	fseek(fd, SEEK_SET, 0);
-
-	send_response(sock_control, 1); //starting
-
-	memset(data, 0, MAXSIZE);
-	while ((num_read = fread(data, 1, MAXSIZE, fd)) > 0) {
-		if (send(sock_data, data, num_read, 0) < 0) {
+    while ((read = getline(&line, &len, fp)) != -1) 
+    {              
+        sprintf(data, "%s", line);
+        if (send(sock_data, data, strlen(data), 0) < 0) 
+        {
 			perror("err");
 		}
-		memset(data, 0, MAXSIZE);
-	}
-
-	fclose(fd);
+    }
+    fclose(fp);
+    if (line) free(line);
 
 	send_response(sock_control, 226);	// send 226
 
@@ -190,19 +155,26 @@ int ftserve_list(int sock_data, int sock_control)
 }
 
 
-
 /**
+ * \function
  * Searching for a product by bar code
+ * 
  */
 int ftserve_pokaz_towar(int sock_data, int sock_control, long int szukane_ID)
 {
 	FILE * fp;
     char * line = NULL;
     char * token = NULL;
+    /**
+     * \var table reserved for data being prepared to send to Client
+     */
     char data[MAXSIZE];
 
     size_t len = 0;
     ssize_t read;
+    /**
+     * \var variable informing whether product has been found 0 - no, 1 - yes
+     */
     int znaleziono = 0;
     
     struct TOWAR baza;
@@ -266,7 +238,9 @@ int ftserve_pokaz_towar(int sock_data, int sock_control, long int szukane_ID)
 
 
 /**
+ * \function
  * Deleting product by a bar code
+ * 
  */
 int ftserve_skasuj_towar(int sock_data, int sock_control, long int szukane_ID)
 {
@@ -294,7 +268,7 @@ int ftserve_skasuj_towar(int sock_data, int sock_control, long int szukane_ID)
 	
 	if(!znaleziono)
     {
-        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
+        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy);
         printf("Znaleziono na serwerze produkt: %s\n", data);
     }
 	
@@ -312,8 +286,11 @@ int ftserve_skasuj_towar(int sock_data, int sock_control, long int szukane_ID)
 	return 0;	
 }
 
+
 /**
+ * \function
  * Change product by a bar code
+ * 
  */
 int ftserve_zmien_towar(int sock_data, int sock_control, long int szukane_ID, char *nowa_nazwa, double nowa_cena)
 {
@@ -345,7 +322,7 @@ int ftserve_zmien_towar(int sock_data, int sock_control, long int szukane_ID, ch
 	
 	if(!znaleziono)
     {
-        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy, tab_TOWAR[i].nazwa, tab_TOWAR[i].cena);
+        sprintf(data, "Nie znaleziono produktu o ID: %ld\n", tab_TOWAR[i].kod_kreskowy);
         printf("Nie znaleziono na serwerze produktu o ID: %ld\n", szukane_ID);
     }
 	
@@ -358,15 +335,16 @@ int ftserve_zmien_towar(int sock_data, int sock_control, long int szukane_ID, ch
 		
     save_database();
 
-	send_response(sock_control, 226);	// send 226 NIE WIEM PO CO TO
+	send_response(sock_control, 266);	// send 226 NIE WIEM PO CO TO
 
 	return 0;	
 }
 
 
-
 /**
+ *  \function
  * Adding a product by a bar code
+ * 
  */
 int ftserve_dodaj_towar(int sock_data, int sock_control, long int szukane_ID, char *nazwa, double price)
 {
@@ -444,6 +422,31 @@ int ftserve_dodaj_towar(int sock_data, int sock_control, long int szukane_ID, ch
 
 
 /**
+ *  \function
+ * Adding a product by a bar code
+ * 
+ */
+int ftserve_brak_uprawnien(int sock_data, int sock_control)
+{
+    char data[MAXSIZE];
+    memset(data, 0, MAXSIZE);
+                    
+    sprintf(data, "Brak uprawnien uzytkownika\n");
+
+	send_response(sock_control, 1); //starting
+
+		if (send(sock_data, data, strlen(data), 0) < 0) 
+        {
+			perror("err");
+		}
+
+	send_response(sock_control, 666);	// send 226
+
+	return 0;	
+}
+
+/**
+ * \function
  * Open data connection to client 
  * Returns: socket for data connection
  * or -1 on error
@@ -473,12 +476,11 @@ int ftserve_start_data_conn(int sock_control)
 }
 
 
-
-
-
 /**
+ * \function
  * Authenticate a user's credentials
  * Return 1 if authenticated, 0 if not
+ * 
  */
 int ftserve_check_user(char*user, char*pass)
 {
@@ -490,7 +492,6 @@ int ftserve_check_user(char*user, char*pass)
 	size_t num_read;									
 	size_t len = 0;
 	FILE *fd;
-	int auth = 0;
 	
 	fd = fopen(".auth", "r");
 	if (fd == NULL) {
@@ -515,28 +516,27 @@ int ftserve_check_user(char*user, char*pass)
 		
 		if ((strcmp(user,"admin")==0) && (strcmp(pass,"admin")==0))
 		{
-			auth = 2;
+			admin = 1;
 			printf("Admin logged in.\n");
 			break;
 		}
 		else if ((strcmp(user,username)==0) && (strcmp(pass,password)==0)) 
 		{
-			auth = 1;
+			admin = 0;
 			printf("User logged in.\n");
 			break;
 		}		
 	}
 	free(line);	
 	fclose(fd);	
-	return auth;
+	return admin;
 }
 
 
-
-
-
 /** 
+ * \function
  * Log in connected client
+ * 
  */
 int ftserve_login(int sock_control)
 {	
@@ -574,20 +574,17 @@ int ftserve_login(int sock_control)
 		pass[n++] = buf[i++];
 	}
 	
-	printf ("User: %s, Pass: %s\n", user, pass);
-	
 	return (ftserve_check_user(user, pass));
 }
 
 
-
-
-
 /**
+ * \function
  * Wait for command from client and fill up cmd and arg
  * and
  * send response
  * Returns response code
+ * 
  */
 int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 {	
@@ -632,12 +629,10 @@ int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 }
 
 
-
-
-
-
 /** 
+ * \function
  * Child process handles connection to client
+ * 
  */
 void ftserve_process(int sock_control)
 {
@@ -650,11 +645,11 @@ void ftserve_process(int sock_control)
 
 	// Authenticate user
 	int k = ftserve_login(sock_control);
-	if (k == 1) 
+	if (k == 0) 
 	{
 		send_response(sock_control, 230);
 	}
-	else if (k == 2)
+	else if (k == 1)
 	{	
 		send_response(sock_control, 330);
 	}
@@ -699,7 +694,7 @@ void ftserve_process(int sock_control)
 		/* kiedy ftserve_recv_cmd zwrocilo jakas komende */
 		if (rc == 200 ) 
         {
-			printf("Otrzymano komende i nastepuje jej procesowanie...\n");
+			printf("[+]Otrzymano komende i nastepuje jej procesowanie...\n");
             // Open data connection with client
 			if ((sock_data = ftserve_start_data_conn(sock_control)) < 0) {
 				close(sock_control);
@@ -709,28 +704,28 @@ void ftserve_process(int sock_control)
 			// Execute command
 			if (strcmp(cmd, "LIST")==0) 
             { // Do list
-                printf("Wykonowywana komenda 'list' przez SERWER\n");
+                printf("[+]Wykonowywana komenda 'list' przez SERWER\n");
 				ftserve_list(sock_data, sock_control);
-			} else if (strcmp(cmd, "RETR")==0) { // Do get <filename>
-                printf("Wykonowywana komenda 'get' przez SERWER\n");
-				ftserve_retr(sock_control, sock_data, arg_array[0]);
 			} else if (strcmp(cmd, "POKA")==0) {
-                printf("Wykonowywana komenda 'pokaz' przez SERWER\n");
-                printf("Szukany kod kreskowy char: %s long int: %ld \n",arg_array[0], char_to_long(arg_array[0]));
+                printf("[+]Wykonowywana komenda 'pokaz' przez SERWER\n");
+                printf("[+]Szukany kod kreskowy char: %s long int: %ld \n",arg_array[0], char_to_long(arg_array[0]));
 				ftserve_pokaz_towar(sock_data, sock_control, char_to_long(arg_array[0]));
-			} else if (strcmp(cmd, "ADD_")==0) {
-                printf("Wykonowywana komenda 'doda' przez SERWER\n");
-                printf("Dodajemy towar: %ld, %s, %lg \n", char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
+			} else if (strcmp(cmd, "ADD_")==0 && admin) {
+                printf("[+]Wykonowywana komenda 'doda' przez SERWER\n");
+                printf("[+]Dodajemy towar: %ld, %s, %lg \n", char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
 				ftserve_dodaj_towar(sock_data, sock_control, char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
-			} else if (strcmp(cmd, "DEL_")==0) {
-                printf("Wykonowywana komenda 'kasu' przez SERWER\n");
-                printf("Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
+			} else if (strcmp(cmd, "DEL_")==0 && admin) {
+                printf("[+]Wykonowywana komenda 'kasu' przez SERWER\n");
+                printf("[+]Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
 				ftserve_skasuj_towar(sock_data, sock_control, char_to_long(arg_array[0]));
-			} else if (strcmp(cmd, "CHNG")==0) {
-                printf("Wykonowywana komenda 'zmie' przez SERWER\n");
-                printf("Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
+			} else if (strcmp(cmd, "CHNG")==0 && admin) {
+                printf("[+]Wykonowywana komenda 'zmie' przez SERWER\n");
+                printf("[+]Kasujemy towar o kodzie kreskowym: %ld \n", char_to_long(arg_array[0]));
 				ftserve_zmien_towar(sock_data, sock_control, char_to_long(arg_array[0]), arg_array[1], atof(arg_array[2]));
-			}
+			} else {
+                printf("Brak uprawnien do wykonywania komendy\n");
+                ftserve_brak_uprawnien(sock_data, sock_control);
+            }
 		
 			// Close data connection
 			close(sock_data);
