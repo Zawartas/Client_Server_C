@@ -1,8 +1,11 @@
 #include "server.h"
 
-struct TOWAR tab_TOWAR[MAX_BUF]; /*!< Temporary tab;e of product structures */
-int database_size; /*!< Size of loaded table of structures */
-int admin; /*!< boolean admin 1, non_admin 0 */
+struct TOWAR tab_TOWAR[MAX_BUF];    /*!< Temporary table of product structures 
+                                    \file server.c*/
+int database_size;                  /*!< Size of loaded table of structures 
+                                    \file server.c */
+int admin;                          /*!< boolean admin 1, non_admin 0 
+                                    \file server.c*/
 
 int main(int argc, char *argv[])
 {
@@ -48,8 +51,8 @@ int main(int argc, char *argv[])
 
 int open_database()
 {
-	FILE * fp;
-    	char * line = NULL;
+	FILE * fp; /*!< file descryptot */
+    	char * line = NULL; /*!< line where one line from database is writte 0 */
     	char * token = NULL;
     	size_t len = 0;
     	ssize_t read;
@@ -91,6 +94,8 @@ void save_database()
 	FILE * fp;
 
     fp = fopen(".baza", "wb");
+    if (fp == NULL)
+        exit(EXIT_FAILURE);
     for (int j = 0; j < database_size; j++)
     {
         if (strcmp(tab_TOWAR[j].nazwa, "do_skasowania") == 0) continue;
@@ -467,6 +472,10 @@ int ftserve_check_user(char*user, char*pass)
 			printf("User logged in.\n");
 			break;
 		}
+		else
+        {
+            admin = -1;
+        }
 	}
 	free(line);
 	fclose(fd);
@@ -523,7 +532,7 @@ int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 	memset(cmd, 0, 5);
 	memset(arg, 0, MAXSIZE);
 
-	// Wait to recieve command
+	// Wait to recieve COMMAND
 	if ((recv_data(sock_control, buffer, sizeof(buffer)) ) == -1) {
 		perror("recv error\n");
 		return -1;
@@ -548,7 +557,7 @@ int ftserve_recv_cmd(int sock_control, char*cmd, char*arg)
 		rc = 200;
 	}
 	else
-	{ //invalid command
+	{ //invalid COMMAND
 		rc = 502;
 	}
 
@@ -576,14 +585,14 @@ void ftserve_process(int sock_control)
 	{
 		send_response(sock_control, 330);
 	}
-	else
+	else if (k == -1)
 	{
 		send_response(sock_control, 430);
 		exit(0);
 	}
 
 	while (1) {
-		// Wait for command
+		// Wait for COMMAND
 		int rc = ftserve_recv_cmd(sock_control, cmd, arg);
 
 		printf("SERWER loop otrzymalo ftserve_recv_cmd RC: %d.\n", rc);
@@ -624,7 +633,7 @@ void ftserve_process(int sock_control)
 				exit(1);
 			}
 
-			// Execute command
+			// Execute COMMAND
 			if (strcmp(cmd, "LIST")==0)
             { // Do list
                 printf("[+]Wykonowywana komenda 'list' przez SERWER\n");

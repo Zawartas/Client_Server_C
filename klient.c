@@ -4,11 +4,6 @@
 int sock_control;
 
 
-/**
- * \function
- * Receive a response from server
- * Returns -1 on error, return code on success
- */
 int read_reply(){
 	int retcode = 0;
     /*The recv(), recvfrom(), and recvmsg() calls are used to receive
@@ -25,10 +20,6 @@ int read_reply(){
 }
 
 
-/**
- * \function
- * Print response message
- */
 void print_reply(int rc) 
 {
 	switch (rc) {
@@ -41,22 +32,14 @@ void print_reply(int rc)
 		case 226:
 			printf("226 Closing data connection. Requested action successful.\n");
 			break;
-		case 550:
-			printf("550 Requested action not taken. File unavailable.\n");
-			break;
 	}
 	
 }
 
 
-/**
- * \function
- * Parse command in cstruct
- * 
- */ 
-int ftclient_read_command(char* buf, int size, struct command *cstruct)
+int ftclient_read_COMMAND(char* buf, int size, struct COMMAND *cstruct)
 {
-	/* cleaning structure for command with arguments */
+	/* cleaning structure for COMMAND with arguments */
     memset(cstruct->code, 0, sizeof(cstruct->code));
     for (int i = 0; i < 3; i++) 
     {
@@ -66,11 +49,11 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
 	printf("server> ");	// prompt for input		
 	fflush(stdout); 	
     
-	// wait for user to enter a command
+	// wait for user to enter a COMMAND
     read_input(buf, size);
 
     
-    //command
+    //COMMAND
 	char *argument = NULL;
 	argument = strtok (buf," ");
     strncpy(cstruct->code, argument, sizeof(cstruct->code));
@@ -86,7 +69,7 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
     }
     
     
-	// buf = command
+	// buf = COMMAND
 	if (strcmp(cstruct->code, "list") == 0) {
 		strcpy(cstruct->code, "LIST");		
 	}
@@ -102,7 +85,7 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
 	else if (strcmp(cstruct->code, "doda") == 0) {
 		strcpy(cstruct->code, "ADD_");		
 	}
-	else if (strcmp(cstruct->code, "kasu") == 0) {
+	else if (strcmp(cstruct->code, "usun") == 0) {
 		strcpy(cstruct->code, "DEL_");
     }
 	else if (strcmp(cstruct->code, "zmin") == 0) {
@@ -124,16 +107,11 @@ int ftclient_read_command(char* buf, int size, struct command *cstruct)
             strcat(buf, " ");
             strncat(buf, cstruct->arg[j], sizeof(cstruct->arg[j]));
         }
-    printf("buf: %s.\n", buf);
     }
 	return 0;
 }
 
 
-/**
- * \function
- * Open data connection
- */
 int ftclient_open_conn(int sock_con)
 {
 	int sock_listen = socket_create(CLIENT_PORT_ID);
@@ -151,47 +129,6 @@ int ftclient_open_conn(int sock_con)
 }
 
 
-
-/** 
- * \function
- * Do list commmand
- */
-int ftclient_list(int sock_data, int sock_con)
-{
-	size_t num_recvd;			// number of bytes received with recv()
-	char buf[MAXSIZE];			// hold a filename received from server
-	int tmp = 0;
-
-	// Wait for server starting message
-	if (recv(sock_con, &tmp, sizeof tmp, 0) < 0) {
-		perror("client: error reading message from server\n");
-		return -1;
-	}
-	
-	memset(buf, 0, sizeof(buf));
-	while ((num_recvd = recv(sock_data, buf, MAXSIZE, 0)) > 0) {
-        	printf("%s", buf);
-		memset(buf, 0, sizeof(buf));
-	}
-	
-	if (num_recvd < 0) {
-	        perror("error");
-	}
-
-	// Wait for server done message
-	if (recv(sock_con, &tmp, sizeof tmp, 0) < 0) {
-		perror("client: error reading message from server\n");
-		return -1;
-	}
-	return 0;
-}
-
-
-
-/** 
- * \function
- * Receive info from server
- */
 int ftclient_odbierz_info_po_komendzie(int sock_data, int sock_con)
 {
 	size_t num_recvd;			// number of bytes received with recv()
@@ -225,43 +162,23 @@ int ftclient_odbierz_info_po_komendzie(int sock_data, int sock_con)
 }
 
 
-
-/**
- * \function
- * Input: cmd struct with an a code and an arg
- * Concats code + arg into a string and sends to server
- */
-int ftclient_send_cmd(struct command *cmd)
+int ftclient_send_cmd(struct COMMAND *cmd)
 {
 	char buffer[MAXSIZE];
 	int rc;
-    if (strcmp(cmd->code, "USER") == 0 || strcmp(cmd->code, "PASS") == 0)
-    {
-        sprintf(buffer, "%s %s", cmd->code, cmd->arg[0]);
-    }
-    else if (strcmp(cmd->code, "QUIT") == 0)
-    {
-        sprintf(buffer, "%s", cmd->code);
-    }
-    else
-    {
-        sprintf(buffer, "%s %s %s %s", cmd->code, cmd->arg[0], cmd->arg[1], cmd->arg[2]);
-    }
+
+    sprintf(buffer, "%s %s", cmd->code, cmd->arg[0]);
     
-	// Send command string to server
+	// Send COMMAND string to server
 	rc = send(sock_control, buffer, (int)strlen(buffer), 0);	
 	if (rc < 0) {
-		perror("Error sending command to server");
+		perror("Error sending COMMAND to server");
 		return -1;
 	}
 	
 	return 0;
 }
 
-/**
- * \function
- * Function that receives password - hidden
- */
 
 char *get_pass(char *sign) {
     
@@ -294,14 +211,9 @@ char *get_pass(char *sign) {
 }
 
 
-/**
- * \function
- * Get login details from user and
- * send to server for authentication
- */
 void ftclient_login()
 {
-	struct command cmd;
+	struct COMMAND cmd;
 	char user[255];
 	memset(user, 0, 255);
 
@@ -310,10 +222,8 @@ void ftclient_login()
 	fflush(stdout); 		
 	read_input(user, 255);
 
-
-	// Send USER command to server
+	// Send USER COMMAND to server
 	strcpy(cmd.code, "USER");
-    
     strncpy(cmd.arg[0], user, sizeof(cmd.arg[0]));
 
 	ftclient_send_cmd(&cmd);
@@ -326,7 +236,7 @@ void ftclient_login()
 	fflush(stdout);	
 	char *pass = get_pass("Password: ");	
 
-	// Send PASS command to server
+	// Send PASS COMMAND to server
 	strcpy(cmd.code, "PASS");
 	strcpy(cmd.arg[0], pass);
 	ftclient_send_cmd(&cmd);
@@ -336,10 +246,10 @@ void ftclient_login()
 
 	switch (retcode) {
 		case 430:
-			printf("Invalid username/password.\n");
+			printf("\nInvalid username/password.\n");
 			exit(0);
 		case 230:
-			printf("Successful USER login.\n");
+			printf("\nSuccessful USER login.\n");
 			break;
 		case 330:
 			printf("\nSuccessful ADMIN login.\n");
@@ -352,17 +262,11 @@ void ftclient_login()
 }
 
 
-
-
-/**
- * \function
- * Main function
- */
 int main(int argc, char* argv[]) 
 {		
 	int data_sock, retcode, s;
 	char buffer[MAXSIZE];
-	struct command cmd;	
+	struct COMMAND cmd;	
 	struct addrinfo hints, *res, *rp;
 
 	if (argc != 3) {
@@ -370,8 +274,8 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
-	char *host = argv[1];
-	char *port = argv[2];
+	char *host = argv[1]; /*!< holds host name/value. */ 
+	char *port = argv[2]; /*!< Holds port value. */ 
 
 	// Get matching addresses
 	memset(&hints, 0, sizeof(struct addrinfo));
@@ -438,15 +342,15 @@ int main(int argc, char* argv[])
 
 	while (1) { // loop until user types quit
 
-		// Get a command from user
+		// Get a COMMAND from user
         memset(buffer, 0, sizeof(buffer));
-		if ( ftclient_read_command(buffer, sizeof(buffer), &cmd) < 0) 
+		if ( ftclient_read_COMMAND(buffer, sizeof(buffer), &cmd) < 0) 
         {
-			printf("Invalid command\n");
-			continue;	// loop back for another command
+			printf("Invalid COMMAND\n");
+			continue;	// loop back for another COMMAND
 		}
 
-		// Send command to server
+		// Send COMMAND to server
 		if (send(sock_control, buffer, (int)strlen(buffer), 0) < 0 ) 
         {
 			close(sock_control);
@@ -455,19 +359,19 @@ int main(int argc, char* argv[])
 		
 		retcode = read_reply();	
 		if (retcode == 221) {
-			/* If command was quit, just exit */
+			/* If COMMAND was quit, just exit */
 			print_reply(221);		
 			break;
 		}
 		
 		if (retcode == 502) 
         	{
-			// If invalid command, show error message
-			printf("%d Invalid command.\n", retcode);
+			// If invalid COMMAND, show error message
+			printf("%d Invalid COMMAND.\n", retcode);
 		}
 		else 
         	{			
-			// Command is valid (RC = 200), process command
+			// Command is valid (RC = 200), process COMMAND
 		
 			// open data connection
 			if ((data_sock = ftclient_open_conn(sock_control)) < 0) {
@@ -475,27 +379,15 @@ int main(int argc, char* argv[])
 				exit(1);
 			}			
 			
-			// execute command
-			if (strcmp(cmd.code, "LIST") == 0) 
+			// execute COMMAND and receive DATA back
+			if (strcmp(cmd.code, "LIST") == 0 || strcmp(cmd.code, "POKA") == 0
+                || strcmp(cmd.code, "ADD_") == 0 || strcmp(cmd.code, "DEL_") == 0
+                || strcmp(cmd.code, "CHNG") == 0) 
             {
-	                ftclient_list(data_sock, sock_control);
-			}
-			else if (strcmp(cmd.code, "POKA") == 0)
-			{
-                ftclient_odbierz_info_po_komendzie(data_sock, sock_control);
-			}
-			else if (strcmp(cmd.code, "ADD_") == 0)
-			{
 				ftclient_odbierz_info_po_komendzie(data_sock, sock_control);
+                print_reply(226);
 			}
-            else if (strcmp(cmd.code, "DEL_") == 0)
-			{
-				ftclient_odbierz_info_po_komendzie(data_sock, sock_control);
-			}
-            else if (strcmp(cmd.code, "CHNG") == 0)
-			{
-				ftclient_odbierz_info_po_komendzie(data_sock, sock_control);
-			}
+			
 			close(data_sock);
 		}
 	} // loop back to get more user input
