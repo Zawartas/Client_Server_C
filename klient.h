@@ -1,69 +1,74 @@
-/* klient.h
+/** klient.h
  * 
- * Client side of TCP file transfer implementation, runs with custom server, 
- * ftserve.c. Receives commands from input, and retreives list of files in current 
- * and files. 
-   * 
- * Valid commands: 
- *    get <filename>
- *    list
+ * Client side of TCP file transfer implementation, runs with custom server. 
+ * Receives COMMANDs from input like list of products, or adding/changing/deleting
+ * a product. 
+ * 
+ * Valid COMMANDs: 
+ *    list (list of products)
  *    quit
+ *    poka (show)
+ *    zmin (change)
+ *    doda (add)
+ *    usun (delete)
  *    
  * Usage: 
- *    ./ftclient SERVER_HOSTNAME PORT#
+ *    ./k.exe SERVER_HOSTNAME PORT#
  */
 
 #ifndef FTCLIENT_H
 #define FTCLIENT_H
 
-#include "common.h"
+#include "biblioteka.h"
 
 
 /**
  * Receive a response from server
- * Returns -1 on error, return code on success
+ * Returns -1 on error, return code on success.
  */
 int read_reply();
 
 
 /**
- * Print response message
+ * Print response message.
  */
 void print_reply(int rc);
 
 
 /**
- * Parse command in cstruct
+ * Parse COMMAND in cstruct
  */ 
-int ftclient_read_command(char* buf, int size, struct command *cstruct);
+int ftclient_read_COMMAND(char* buf, int size, struct COMMAND *cstruct);
 
 
 /**
- * Do get <filename> command 
- */
-int ftclient_get(int data_sock, int sock_control, char* arg);
-
-
-/**
- * Open data connection
+ * Open data connection.
  */
 int ftclient_open_conn(int sock_con);
 
 
 /** 
- * Do list commmand
+ * Receive data from list COMMAND.
  */
 int ftclient_list(int sock_data, int sock_con);
 
+/** 
+ * Receive data from server after a COMMAND has been processed.
+ */
+int ftclient_odbierz_info_po_komendzie(int sock_data, int sock_con);
 
 /**
  * Input: cmd struct with an a code and an arg
- * Concats code + arg into a string and sends to server
+ * Concats code + arg into a string and sends to server.
  */
-int ftclient_send_cmd(struct command *cmd);
+int ftclient_send_cmd(struct COMMAND *cmd);
 
 
+/**
+ * Function that allows to write password - hidden.
+ */
 char *get_pass();
+
 
 /**
  * Get login details from user and

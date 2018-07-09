@@ -1,11 +1,10 @@
 #include "server.h"
 
-struct TOWAR tab_TOWAR[MAX_BUF];    /*!< Temporary table of product structures 
-                                    \file server.c*/
-int database_size;                  /*!< Size of loaded table of structures 
-                                    \file server.c */
-int admin;                          /*!< boolean admin 1, non_admin 0 
-                                    \file server.c*/
+struct TOWAR tab_TOWAR[MAX_BUF];
+
+int database_size;
+int admin;
+                            
 
 int main(int argc, char *argv[])
 {

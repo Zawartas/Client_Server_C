@@ -32,12 +32,12 @@
  * Holds COMMAND code and arguments.
  */
 struct COMMAND {
-    char code[5]; /**< COMMAND code */
-	char arg[3][255]; /**< table for three arguments of COMMAND */
+    char code[5];
+	char arg[3][255];
 };
 
 /**
- * Holds data for a product.
+ * Holds data for a single product.
  */
 struct TOWAR {
     long int kod_kreskowy; /**< product bar code */
@@ -56,7 +56,6 @@ int socket_create(int port);
 /**
  * Create new socket for incoming client connection request
  * Returns -1 on error, or fd of newly created socket
-    \param sock_data is a socket that listens for connections.
  */
 int socket_accept(int sock_listen);
 
